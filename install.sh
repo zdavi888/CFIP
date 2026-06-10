@@ -81,14 +81,29 @@ echo -e "📦 Node.js 版本: ${GREEN}$(node -v)${NC}"
 echo -e "📦 NPM 版本: ${GREEN}$(npm -v)${NC}"
 
 # 4. 完美进行包拉取与编译 (Build-Phase)
-echo -e "⚙️ 正在执行 npm 生产环境组件安装..."
-npm install --omit=dev --legacy-peer-deps
+echo -e "⚙️ 正在执行 npm 依赖和开发编译组件集安装..."
+# 显式解除可能存在的生产环境只读依赖限制，确保 typescript 等核心编译包被正确拉取
+NODE_ENV=development npm install --include=dev --legacy-peer-deps
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ npm install 依赖安装失败，请检查网络或包树冲突！${NC}"
+    exit 1
+fi
 
 echo -e "⚙️ 正在编译 Next.js 生产环境资源 (生成静态页面与强力服务端路由)..."
 npm run build
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ npm run build 编译失败！请检查上方报错日志并解决后再试。${NC}"
+    exit 1
+fi
 
 # 5. 设置 native systemd 服务器后台挂载服务，确保进程自启与容错
 SERVICE_FILE="/etc/systemd/system/warp-anycast.service"
+
+# 获取当前系统 node 的绝对路径，并定位二进制真实入口，保障 Systemd 高可靠唤醒并避免 Wrapper 脚本执行阻断
+NODE_PATH=$(which node)
+if [ -z "$NODE_PATH" ]; then
+    NODE_PATH="/usr/bin/node"
+fi
 
 echo -e "💾 正在配置系统的 Systemd 服务自控模板 [warp-anycast.service]..."
 cat > "$SERVICE_FILE" <<EOF
@@ -100,7 +115,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$APP_DIR
-ExecStart=/usr/bin/node $APP_DIR/node_modules/.bin/next start -p 59418
+ExecStart=$NODE_PATH $APP_DIR/node_modules/next/dist/bin/next start -p 59418
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
