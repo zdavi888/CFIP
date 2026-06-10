@@ -1,0 +1,6 @@
+{
+  "name": "Cloudflare WARP IP Optimizer",
+  "description": "获取 Cloudflare WARP 优选 Socks5 代理 IP 终极部署解决方案与测速配置工具",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
